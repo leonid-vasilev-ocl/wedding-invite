@@ -189,6 +189,72 @@ img { max-width: 100%; display: block; }
 .env-pocket::before { left: 0; transform: skewY(24deg); transform-origin: top left; }
 .env-pocket::after { right: 0; transform: skewY(-24deg) scaleX(-1); transform-origin: top right; }
 
+/* --- адрес, марка и штемпель --- */
+
+.env-address {
+  position: absolute;
+  left: 7%;
+  bottom: 9%;
+  z-index: 3;
+  max-width: 52%;
+  font-family: 'Marck Script', cursive;
+  font-size: clamp(1.05rem, 4.6vw, 1.45rem);
+  line-height: 1.25;
+  color: #6e3247;
+  transform: rotate(-2.5deg);
+  pointer-events: none;
+}
+
+.env-stamp {
+  position: absolute;
+  right: 5.5%;
+  bottom: 11%;
+  z-index: 3;
+  width: 16%;
+  padding: 1.2%;
+  background: var(--card);
+  background-clip: padding-box;
+  border: 4px dotted #decfb3; /* перфорация цветом конверта */
+  transform: rotate(3deg);
+  box-shadow: 0 1px 4px rgba(44, 16, 25, 0.14);
+  pointer-events: none;
+}
+
+.env-stamp img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: 62% 28%;
+  filter: sepia(0.28) saturate(0.85) contrast(0.95);
+}
+
+.env-stamp span {
+  display: block;
+  text-align: center;
+  font-family: var(--font-utility);
+  font-weight: 400;
+  font-size: clamp(0.32rem, 1.4vw, 0.46rem);
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  text-transform: uppercase;
+  color: var(--wine);
+  padding-top: 0.25em;
+}
+
+.env-postmark {
+  position: absolute;
+  right: 15%;
+  bottom: 5%;
+  z-index: 3;
+  width: 27%;
+  color: #6e3247;
+  opacity: 0.5;
+  transform: rotate(-11deg);
+  mix-blend-mode: multiply;
+  font-family: var(--font-utility);
+  pointer-events: none;
+}
+
 .env-flap {
   position: absolute;
   inset: 0 0 auto 0;

@@ -6,9 +6,9 @@
    EDIT ME: раскомментируйте и заполните под каждого гостя.
    ============================================================ */
 const GUESTS = {
-  // 'mama-papa': 'Дорогие мама и папа!',
-  // 'roditeli-dashi': 'Дорогие Ирина и Сергей!',
-  // 'brat': 'Дорогой Миша!',
+  // 'mama-papa':      { address: 'Для мамы и папы',       greeting: 'Дорогие мама и папа!' },
+  // 'roditeli-dashi': { address: 'Для Ирины и Сергея',    greeting: 'Дорогие Ирина и Сергей!' },
+  // 'brat':           { address: 'Для Миши',              greeting: 'Дорогой Миша!' },
 };
 
 const WEDDING_DATE = new Date('2026-08-19T09:00:00+04:00'); // сбор в отеле, Тбилиси (UTC+4)
@@ -25,9 +25,10 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
 
 (function applyGuestGreeting() {
   const slug = new URLSearchParams(location.search).get('g');
-  if (slug && GUESTS[slug]) {
-    document.getElementById('greeting').textContent = GUESTS[slug];
-  }
+  const guest = slug && GUESTS[slug];
+  if (!guest) return; // без параметра остаётся общий вариант из HTML
+  if (guest.address) document.getElementById('envAddress').textContent = guest.address;
+  if (guest.greeting) document.getElementById('greeting').textContent = guest.greeting;
 })();
 
 /* ---------- звук: шорох бумаги (Web Audio, без файла) ---------- */
@@ -67,25 +68,46 @@ function playRustle() {
 
 /* ---------- музыка ---------- */
 
+const MUSIC_VOLUME = 0.55;
+let fadeTimer = null;
+
+/* плавная громкость; на iOS volume игнорируется — просто играет как есть */
+function fadeTo(target, ms, done) {
+  clearInterval(fadeTimer);
+  const from = bgm.volume;
+  const start = performance.now();
+  fadeTimer = setInterval(() => {
+    const k = Math.min((performance.now() - start) / ms, 1);
+    bgm.volume = from + (target - from) * k;
+    if (k === 1) { clearInterval(fadeTimer); if (done) done(); }
+  }, 40);
+}
+
 function setMusicUi(playing) {
   musicToggle.setAttribute('aria-pressed', String(playing));
 }
 
 function startMusic() {
   if (sessionStorage.getItem('musicMuted') === '1') { setMusicUi(false); return; }
-  bgm.volume = 0.55;
-  bgm.play().then(() => setMusicUi(true)).catch(() => setMusicUi(false));
+  bgm.volume = 0;
+  bgm.play().then(() => {
+    setMusicUi(true);
+    fadeTo(MUSIC_VOLUME, 2500); // музыка «выплывает» из конверта вместе с письмом
+  }).catch(() => setMusicUi(false));
 }
 
 musicToggle.addEventListener('click', () => {
   if (bgm.paused) {
     sessionStorage.removeItem('musicMuted');
-    bgm.volume = 0.55;
-    bgm.play().then(() => setMusicUi(true)).catch(() => setMusicUi(false));
+    bgm.volume = 0;
+    bgm.play().then(() => {
+      setMusicUi(true);
+      fadeTo(MUSIC_VOLUME, 400);
+    }).catch(() => setMusicUi(false));
   } else {
-    bgm.pause();
     sessionStorage.setItem('musicMuted', '1');
     setMusicUi(false);
+    fadeTo(0, 400, () => bgm.pause());
   }
 });
 
@@ -99,6 +121,7 @@ function openEnvelope() {
 
   playRustle();
   startMusic();
+  document.dispatchEvent(new CustomEvent('envelope-open'));
 
   const t = reducedMotion ? { flap: 0, rise: 120, show: 240, done: 500 }
                           : { flap: 350, rise: 1150, show: 1850, done: 2700 };
@@ -218,6 +241,32 @@ tickCountdown();
     ph: Math.random() * Math.PI * 2,
   }));
 
+  /* золотой «салют» из-под печати в момент открытия */
+  const burst = [];
+
+  document.addEventListener('envelope-open', () => {
+    const seal = document.querySelector('.wax-seal');
+    if (!seal) return;
+    const r = seal.getBoundingClientRect();
+    const cx = (r.left + r.width / 2) * devicePixelRatio;
+    const cy = (r.top + r.height / 2) * devicePixelRatio;
+    for (let i = 0; i < 46; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const speed = (0.12 + Math.random() * 0.38) * devicePixelRatio;
+      burst.push({
+        x: cx, y: cy,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed - 0.22 * devicePixelRatio, // вверх
+        rot: Math.random() * Math.PI * 2,
+        vrot: (Math.random() - 0.5) * 0.006,
+        r: (1.2 + Math.random() * 2.6) * devicePixelRatio,
+        petal: Math.random() < 0.45,
+        life: 0,
+        ttl: 1400 + Math.random() * 900,
+      });
+    }
+  });
+
   let last = performance.now();
   function frame(now) {
     if (!document.body.contains(canvas)) { cancelAnimationFrame(raf); return; }
@@ -233,6 +282,29 @@ tickCountdown();
       ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(203, 181, 140, ${p.a * tw})`;
       ctx.fill();
+    }
+    for (let i = burst.length - 1; i >= 0; i--) {
+      const b = burst[i];
+      b.life += dt;
+      if (b.life > b.ttl) { burst.splice(i, 1); continue; }
+      b.vy += 0.00045 * devicePixelRatio * dt; // гравитация
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      b.rot += b.vrot * dt;
+      const fade = 1 - b.life / b.ttl;
+      ctx.save();
+      ctx.translate(b.x, b.y);
+      ctx.rotate(b.rot);
+      ctx.beginPath();
+      if (b.petal) {
+        ctx.ellipse(0, 0, b.r * 2.2, b.r, 0, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(224, 195, 145, ${0.75 * fade})`;
+      } else {
+        ctx.arc(0, 0, b.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(203, 181, 140, ${0.85 * fade})`;
+      }
+      ctx.fill();
+      ctx.restore();
     }
     raf = requestAnimationFrame(frame);
   }
