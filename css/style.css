@@ -497,12 +497,20 @@ img { max-width: 100%; display: block; }
 
 .timeline li:last-child { padding-bottom: 0; }
 
-.timeline time {
+.timeline time,
+.timeline .t {
   font-family: var(--font-display);
   font-size: 1.15rem;
   color: var(--wine);
   text-align: right;
   line-height: 1.5;
+}
+
+.timeline .t {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--gold);
 }
 
 .timeline li > div { position: relative; padding-left: 1.6rem; }
