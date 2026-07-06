@@ -224,7 +224,6 @@ img { max-width: 100%; display: block; }
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  object-position: 62% 28%;
   filter: sepia(0.28) saturate(0.85) contrast(0.95);
 }
 
@@ -443,7 +442,7 @@ img { max-width: 100%; display: block; }
   width: 100%;
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  object-position: 62% 28%;
+  object-position: 50% 30%;
   border-radius: 12rem 12rem 0.5rem 0.5rem;
   filter: saturate(0.94);
 }
