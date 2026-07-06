@@ -443,7 +443,7 @@ img { max-width: 100%; display: block; }
   aspect-ratio: 3 / 4;
   object-fit: cover;
   object-position: 50% 30%;
-  border-radius: 12rem 12rem 0.5rem 0.5rem;
+  border-radius: 1rem;
   filter: saturate(0.94);
 }
 
@@ -452,7 +452,7 @@ img { max-width: 100%; display: block; }
   position: absolute;
   inset: -12px;
   border: 1px solid var(--hairline);
-  border-radius: 13rem 13rem 0.7rem 0.7rem;
+  border-radius: 1.5rem;
   pointer-events: none;
 }
 
