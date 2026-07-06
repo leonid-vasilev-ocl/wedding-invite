@@ -11,7 +11,7 @@ const GUESTS = {
   // 'brat': 'Дорогой Миша!',
 };
 
-const WEDDING_DATE = new Date('2026-08-19T10:00:00+04:00'); // сбор в отеле, Тбилиси (UTC+4)
+const WEDDING_DATE = new Date('2026-08-19T09:00:00+04:00'); // сбор в отеле, Тбилиси (UTC+4)
 
 const scene = document.getElementById('scene');
 const envelope = document.getElementById('envelope');
