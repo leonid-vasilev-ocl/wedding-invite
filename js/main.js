@@ -10,6 +10,8 @@ const GUESTS = {
   'mama':      { address: 'Для мамы',        greeting: 'Дорогая мама!' },
   'brat':      { address: 'Для Саши',        greeting: 'Дорогой Саша!' },
   'mama-sasha': { address: 'Для мамы и Саши', greeting: 'Дорогие мама и Саша!' },
+  'lyudmila':       { address: 'Для Людмилы Ивановны',        greeting: 'Дорогая Людмила Ивановна!' },
+  'lyudmila-sasha': { address: 'Для Людмилы Ивановны и Саши', greeting: 'Дорогие Людмила Ивановна и Саша!' },
   // EDIT ME: шаблон для новых гостей
   // 'roditeli-dashi': { address: 'Для Ирины и Сергея', greeting: 'Дорогие Ирина и Сергей!' },
 };
