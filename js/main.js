@@ -163,7 +163,7 @@ envelope.addEventListener('keydown', (e) => {
 /* ---------- самолётики с транспарантами ---------- */
 
 // EDIT ME: слова на флажках и число самолётиков в небе
-const PLANE_WORDS = ['Love', 'Даша и Лёня', '19 · 08 · 2026', 'Ждём вас!', 'ки!'];
+const PLANE_WORDS = ['Love', 'Даша и Лёня', 'All we need is love', '19 · 08 · 2026', 'Ждём вас!', 'ки!'];
 const PLANE_COUNT = 3;
 
 const PLANE_SVG =
@@ -203,6 +203,7 @@ function resetPlane(p, onScreen) {
   p.prevY = p.y;
   p.dodge = 0;                     // сглаженное смещение от курсора
   p.heading = Math.atan2(p.vy, p.vx) * 180 / Math.PI; // нос — по вектору скорости
+  p.banner = 0;                    // наклон всей связки (флажок летит за самолётом)
   p.loop = -1;                     // -1 = обычный полёт
   p.nextLoopAt = performance.now() + 6000 + Math.random() * 12000;
 }
@@ -244,12 +245,21 @@ function planeFrame(now, dt) {
       const target = Math.atan2(my, mx) * 180 / Math.PI;
       const delta = ((target - p.heading + 540) % 360) - 180;
       p.heading += delta * Math.min(1, dt * (p.loop >= 0 ? 14 : 6));
-      p.iconEl.style.transform = `rotate(${p.heading.toFixed(1)}deg)`;
+
+      // вся связка (верёвка + флажок) наклоняется вдоль линии полёта;
+      // текст остаётся читаемым (наклон в пределах ±90°), в петле — замирает
+      if (p.loop < 0) {
+        let line = ((p.heading % 360) + 360) % 360;
+        if (line > 90 && line < 270) line -= 180;
+        else if (line >= 270) line -= 360;
+        p.banner += (line - p.banner) * Math.min(1, dt * 5);
+      }
+      p.iconEl.style.transform = `rotate(${(p.heading - p.banner).toFixed(1)}deg)`;
     }
     p.prevX = p.x;
     p.prevY = p.y;
 
-    p.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+    p.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0) rotate(${p.banner.toFixed(1)}deg)`;
   }
 }
 
