@@ -163,7 +163,7 @@ envelope.addEventListener('keydown', (e) => {
 /* ---------- самолётики с транспарантами ---------- */
 
 // EDIT ME: слова на флажках и число самолётиков в небе
-const PLANE_WORDS = ['Love', 'Даша и Лёня', 'All we need is love', '19 · 08 · 2026', 'Ждём вас!', 'ки!'];
+const PLANE_WORDS = ['Love', 'Лёня ♥ Даша', 'All we need is love', '❤️', '19 · 08 · 2026', 'Ждём вас!', 'ки!'];
 const PLANE_COUNT = 3;
 
 const PLANE_SVG =
@@ -201,18 +201,13 @@ function trailPoint(trail, s) {
 function resetPlane(p, onScreen) {
   const W = window.innerWidth, H = window.innerHeight;
   const speed = 55 + Math.random() * 45; // px/с
-  // стартуем с любой из четырёх сторон, летим по диагоналям
-  const side = onScreen ? 'screen'
-    : ['left', 'left', 'right', 'right', 'top', 'bottom'][Math.floor(Math.random() * 6)];
+  // летим строго слева направо или справа налево, с лёгким дрейфом по высоте
+  const side = onScreen ? 'screen' : (Math.random() < 0.5 ? 'left' : 'right');
 
-  p.vy = (Math.random() - 0.5) * 0.6 * speed;
-  if (side === 'left')        { p.vx = speed;  p.x = -400; p.baseY = Math.random() * 0.5 * H; }
-  else if (side === 'right')  { p.vx = -speed; p.x = W + 80; p.baseY = Math.random() * 0.5 * H; }
-  else if (side === 'top')    { p.vx = (Math.random() < 0.5 ? 1 : -1) * speed; p.vy = (0.4 + Math.random() * 0.3) * speed; p.x = W * (0.2 + Math.random() * 0.6); p.baseY = -60; }
-  else if (side === 'bottom') { p.vx = (Math.random() < 0.5 ? 1 : -1) * speed; p.vy = -(0.4 + Math.random() * 0.3) * speed; p.x = W * (0.2 + Math.random() * 0.6); p.baseY = 0.6 * H; }
-  else                        { p.vx = (Math.random() < 0.5 ? 1 : -1) * speed; p.x = Math.random() * W; p.baseY = Math.random() * 0.45 * H; }
-
-  p.dir = p.vx >= 0 ? 1 : -1;
+  p.vy = (Math.random() - 0.5) * 0.5 * speed;
+  if (side === 'left')       { p.vx = speed;  p.x = -400; p.baseY = Math.random() * 0.5 * H; }
+  else if (side === 'right') { p.vx = -speed; p.x = W + 80; p.baseY = Math.random() * 0.5 * H; }
+  else                       { p.vx = (Math.random() < 0.5 ? 1 : -1) * speed; p.x = Math.random() * W; p.baseY = Math.random() * 0.45 * H; }
   p.flagEl.textContent = PLANE_WORDS[planeWordIdx++ % PLANE_WORDS.length];
   p.fw = p.flagEl.offsetWidth;
   p.fh = p.flagEl.offsetHeight;
@@ -228,8 +223,6 @@ function resetPlane(p, onScreen) {
   p.windOff = 0; p.windV = 0;      // «порыв ветра» от скролла
   p.heading = Math.atan2(p.vy, p.vx) * 180 / Math.PI; // нос — по вектору скорости
   p.flagAngle = ((p.heading + 90) % 180 + 180) % 180 - 90;
-  p.loop = -1;                     // -1 = обычный полёт
-  p.nextLoopAt = performance.now() + 6000 + Math.random() * 12000;
 
   // след предзаполняем назад по вектору скорости — флажок сразу летит ровно
   const sp = Math.hypot(p.vx, p.vy) || 1;
@@ -250,34 +243,24 @@ function planeFrame(now, dt) {
   skyCtx.setLineDash([4 * devicePixelRatio, 4 * devicePixelRatio]);
 
   for (const p of planes) {
-    if (p.loop >= 0) {
-      // мёртвая петля
-      p.loop += dt / 1.7;
-      const a = Math.min(p.loop, 1) * Math.PI * 2;
-      p.x = p.loopX + 40 * Math.sin(a) * p.dir;
-      p.y = p.loopY - 40 * (1 - Math.cos(a));
-      if (p.loop >= 1) { p.loop = -1; p.nextLoopAt = now + 8000 + Math.random() * 12000; }
-    } else {
-      p.x += p.vx * dt;
-      p.baseY += p.vy * dt;
+    p.x += p.vx * dt;
+    p.baseY += p.vy * dt;
 
-      // мягкий отскок от границ «неба» (5–60% экрана)
-      if (p.baseY < 0.04 * H && p.vy < 0) p.vy = -p.vy;
-      if (p.baseY > 0.6 * H && p.vy > 0) p.vy = -p.vy;
+    // мягкий отскок от границ «неба» (5–60% экрана)
+    if (p.baseY < 0.04 * H && p.vy < 0) p.vy = -p.vy;
+    if (p.baseY > 0.6 * H && p.vy > 0) p.vy = -p.vy;
 
-      // курсор рядом — плавное усилие в сторону от него, без рывков
-      const dx = p.x - pointer.x, dy = p.y - pointer.y;
-      const dist = Math.hypot(dx, dy);
-      const want = dist < 160 ? (dy >= 0 ? 1 : -1) * (160 - dist) * 0.8 : 0;
-      p.dodge += (want - p.dodge) * Math.min(1, dt * 2.2);
+    // курсор рядом — плавное усилие в сторону от него, без рывков
+    const dx = p.x - pointer.x, dy = p.y - pointer.y;
+    const dist = Math.hypot(dx, dy);
+    const want = dist < 160 ? (dy >= 0 ? 1 : -1) * (160 - dist) * 0.8 : 0;
+    p.dodge += (want - p.dodge) * Math.min(1, dt * 2.2);
 
-      const wave = Math.sin(p.x * p.f1 + p.ph1) * p.a1 + Math.sin(p.x * p.f2 + p.ph2) * p.a2;
-      p.y += (p.baseY + wave + p.dodge - p.y) * Math.min(1, dt * 3);
+    const wave = Math.sin(p.x * p.f1 + p.ph1) * p.a1 + Math.sin(p.x * p.f2 + p.ph2) * p.a2;
+    p.y += (p.baseY + wave + p.dodge - p.y) * Math.min(1, dt * 3);
 
-      if (now > p.nextLoopAt) { p.loop = 0; p.loopX = p.x; p.loopY = p.y; }
-      const margin = ROPE_GAP + ROPE_LEN + p.fw + 200;
-      if (p.x < -margin || p.x > W + margin || p.y < -160 || p.y > 0.8 * H) resetPlane(p, false);
-    }
+    const margin = ROPE_GAP + ROPE_LEN + p.fw + 200;
+    if (p.x < -margin || p.x > W + margin || p.y < -160 || p.y > 0.8 * H) resetPlane(p, false);
 
     // «ветер» от скролла: импульс + возврат пружиной (у каждого свой характер)
     p.windV += -gust * p.windK * 2;
@@ -291,7 +274,7 @@ function planeFrame(now, dt) {
     if (Math.hypot(mx, my) > 0.05) {
       const target = Math.atan2(my, mx) * 180 / Math.PI;
       const delta = ((target - p.heading + 540) % 360) - 180;
-      p.heading += delta * Math.min(1, dt * (p.loop >= 0 ? 14 : 6));
+      p.heading += delta * Math.min(1, dt * 6);
     }
     p.prevX = p.x;
     p.prevY = ry;
@@ -360,14 +343,6 @@ function startPlanes() {
   }
 
   window.addEventListener('pointermove', (e) => { pointer.x = e.clientX; pointer.y = e.clientY; });
-  // тап/клик рядом с самолётиком — мёртвая петля
-  window.addEventListener('pointerdown', (e) => {
-    for (const p of planes) {
-      if (p.loop < 0 && Math.hypot(p.x - e.clientX, p.y - e.clientY) < 140) {
-        p.loop = 0; p.loopX = p.x; p.loopY = p.y;
-      }
-    }
-  });
 
   // скролл «сдувает» самолётики — с инерцией и пружинным возвратом
   lastScrollY = window.scrollY;
