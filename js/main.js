@@ -199,8 +199,10 @@ function resetPlane(p, onScreen) {
   p.a1 = 24 + Math.random() * 30;  p.f1 = 0.005 + Math.random() * 0.004;  p.ph1 = Math.random() * Math.PI * 2;
   p.a2 = 8 + Math.random() * 14;   p.f2 = 0.011 + Math.random() * 0.007;  p.ph2 = Math.random() * Math.PI * 2;
   p.y = p.baseY;
+  p.prevX = p.x;
+  p.prevY = p.y;
   p.dodge = 0;                     // сглаженное смещение от курсора
-  p.tilt = 0;
+  p.heading = Math.atan2(p.vy, p.vx) * 180 / Math.PI; // нос — по вектору скорости
   p.loop = -1;                     // -1 = обычный полёт
   p.nextLoopAt = performance.now() + 6000 + Math.random() * 12000;
 }
@@ -214,9 +216,7 @@ function planeFrame(now, dt) {
       const a = Math.min(p.loop, 1) * Math.PI * 2;
       p.x = p.loopX + 40 * Math.sin(a) * p.dir;
       p.y = p.loopY - 40 * (1 - Math.cos(a));
-      p.iconEl.style.transform =
-        `scaleX(${p.dir === -1 ? -1 : 1}) rotate(${-a * 180 / Math.PI * p.dir}deg)`;
-      if (p.loop >= 1) { p.loop = -1; p.iconEl.style.transform = ''; p.nextLoopAt = now + 8000 + Math.random() * 12000; }
+      if (p.loop >= 1) { p.loop = -1; p.nextLoopAt = now + 8000 + Math.random() * 12000; }
     } else {
       p.x += p.vx * dt;
       p.baseY += p.vy * dt;
@@ -232,18 +232,22 @@ function planeFrame(now, dt) {
       p.dodge += (want - p.dodge) * Math.min(1, dt * 2.2);
 
       const wave = Math.sin(p.x * p.f1 + p.ph1) * p.a1 + Math.sin(p.x * p.f2 + p.ph2) * p.a2;
-      const prevY = p.y;
       p.y += (p.baseY + wave + p.dodge - p.y) * Math.min(1, dt * 3);
-
-      // плавный крен по фактическому движению
-      const tiltTarget = Math.max(-16, Math.min(16,
-        Math.atan2(p.y - prevY, Math.abs(p.vx) * dt) * 180 / Math.PI * 0.5 * p.dir));
-      p.tilt += (tiltTarget - p.tilt) * Math.min(1, dt * 4);
-      p.el.style.rotate = p.tilt.toFixed(2) + 'deg';
 
       if (now > p.nextLoopAt) { p.loop = 0; p.loopX = p.x; p.loopY = p.y; }
       if (p.x < -p.w - 140 || p.x > W + 120 || p.y < -120 || p.y > 0.75 * H) resetPlane(p, false);
     }
+
+    // нос самолёта всегда смотрит туда, куда он реально летит
+    const mx = p.x - p.prevX, my = p.y - p.prevY;
+    if (Math.hypot(mx, my) > 0.1) {
+      const target = Math.atan2(my, mx) * 180 / Math.PI;
+      const delta = ((target - p.heading + 540) % 360) - 180;
+      p.heading += delta * Math.min(1, dt * (p.loop >= 0 ? 14 : 6));
+      p.iconEl.style.transform = `rotate(${p.heading.toFixed(1)}deg)`;
+    }
+    p.prevX = p.x;
+    p.prevY = p.y;
 
     p.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
   }

@@ -732,8 +732,7 @@ img { max-width: 100%; display: block; }
   animation: plane-bob 2.8s ease-in-out 0.4s infinite;
 }
 
-.plane.fly-left { flex-direction: row-reverse; }
-.plane.fly-left .plane-icon { transform: scaleX(-1); }
+.plane.fly-left { flex-direction: row-reverse; } /* нос — по вектору скорости (JS) */
 
 @keyframes plane-bob {
   0%, 100% { translate: 0 0; }
