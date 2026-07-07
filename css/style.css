@@ -695,13 +695,14 @@ img { max-width: 100%; display: block; }
 
 .plane {
   position: fixed;
-  top: 20vh;
+  top: 0;
   left: 0;
-  z-index: 0; /* за контентом — .invite поднят через isolation */
+  z-index: 0; /* за контентом — .invite поднят через z-index */
   display: flex;
   align-items: center;
   opacity: 0.65;
-  transform: translateX(-200vw); /* в состоянии покоя — за кадром */
+  transform: translateX(-200vw); /* до первого кадра — за кадром */
+  will-change: transform;
   pointer-events: none;
   color: var(--wine);
 }

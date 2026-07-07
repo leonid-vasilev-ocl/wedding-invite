@@ -74,6 +74,7 @@ function playRustle() {
 /* ---------- музыка ---------- */
 
 const MUSIC_VOLUME = 0.55;
+// music.mp3 «повёрнут» так, что начинается сразу с припева (шов цикла бесшовный)
 let fadeTimer = null;
 
 /* плавная громкость; на iOS volume игнорируется — просто играет как есть */
@@ -161,32 +162,106 @@ envelope.addEventListener('keydown', (e) => {
 
 /* ---------- самолётики с транспарантами ---------- */
 
-// EDIT ME: слова на флажках
+// EDIT ME: слова на флажках и число самолётиков в небе
 const PLANE_WORDS = ['Love', 'Даша и Лёня', '19 · 08 · 2026', 'Ждём вас!', 'ки!'];
-let planeIdx = 0;
+const PLANE_COUNT = 3;
 
-function launchPlane() {
-  const plane = document.getElementById('plane');
-  document.getElementById('planeFlag').textContent =
-    PLANE_WORDS[planeIdx % PLANE_WORDS.length];
-  const toRight = planeIdx % 2 === 0;
-  planeIdx++;
-  plane.classList.toggle('fly-left', !toRight);
-  plane.style.top = (2 + Math.random() * 5) + 'vh'; // верхняя «небесная» полоса
+const PLANE_SVG =
+  '<span class="plane-flag"></span><i class="plane-rope"></i>' +
+  '<svg class="plane-icon" viewBox="0 0 32 32" width="30" height="30" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">' +
+  '<path d="M30 16 L3 7 L11 16 L3 25 Z"/><line x1="30" y1="16" x2="11" y2="16"/></svg>';
 
-  const w = plane.offsetWidth + 60;
-  const from = toRight ? -w : window.innerWidth + w;
-  const to = toRight ? window.innerWidth + w : -w;
-  const flight = plane.animate(
-    [{ transform: `translateX(${from}px)` }, { transform: `translateX(${to}px)` }],
-    { duration: 14000 + Math.random() * 5000, easing: 'linear' }
-  );
-  flight.onfinish = () => setTimeout(launchPlane, 5000 + Math.random() * 7000);
+const planes = [];
+let planeWordIdx = 0;
+const pointer = { x: -1e4, y: -1e4 };
+
+function resetPlane(p, onScreen) {
+  p.dir = Math.random() < 0.5 ? 1 : -1;
+  p.el.classList.toggle('fly-left', p.dir === -1);
+  p.flagEl.textContent = PLANE_WORDS[planeWordIdx++ % PLANE_WORDS.length];
+  p.w = p.el.offsetWidth;
+  p.speed = 55 + Math.random() * 45;                      // px/с
+  p.baseY = (0.05 + Math.random() * 0.3) * window.innerHeight;
+  p.ampl = 14 + Math.random() * 26;                       // амплитуда волны
+  p.freq = 0.004 + Math.random() * 0.004;                 // частота волны
+  p.phase = Math.random() * Math.PI * 2;
+  p.x = onScreen ? Math.random() * window.innerWidth
+                 : (p.dir === 1 ? -p.w - 80 : window.innerWidth + 80);
+  p.y = p.baseY;
+  p.loop = -1;                                            // -1 = обычный полёт
+  p.nextLoopAt = performance.now() + 6000 + Math.random() * 12000;
+}
+
+function planeFrame(now, dt) {
+  for (const p of planes) {
+    const cx = p.x + p.w / 2, cy = p.y;
+
+    if (p.loop >= 0) {
+      // мёртвая петля
+      p.loop += dt / 1.7;
+      const a = Math.min(p.loop, 1) * Math.PI * 2;
+      p.x = p.loopX + 40 * Math.sin(a) * p.dir;
+      p.y = p.loopY - 40 * (1 - Math.cos(a));
+      p.iconEl.style.transform =
+        `scaleX(${p.dir === -1 ? -1 : 1}) rotate(${-a * 180 / Math.PI * p.dir}deg)`;
+      if (p.loop >= 1) { p.loop = -1; p.iconEl.style.transform = ''; p.nextLoopAt = now + 8000 + Math.random() * 12000; }
+    } else {
+      p.x += p.dir * p.speed * dt;
+      let targetY = p.baseY + Math.sin(p.x * p.freq + p.phase) * p.ampl;
+
+      // реакция на курсор/палец: мягко уворачиваются
+      const dx = cx - pointer.x, dy = cy - pointer.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 150) {
+        targetY += (dy >= 0 ? 1 : -1) * (150 - dist) * 0.9;
+        p.x += p.dir * (150 - dist) * 0.6 * dt * 8;
+      }
+      const prevY = p.y;
+      p.y += (targetY - p.y) * Math.min(1, dt * 3.5);
+
+      // лёгкий крен по направлению движения
+      const tilt = Math.max(-12, Math.min(12, (p.y - prevY) / (p.speed * dt) * 22 * p.dir));
+      p.el.style.rotate = tilt + 'deg';
+
+      if (now > p.nextLoopAt) { p.loop = 0; p.loopX = p.x; p.loopY = p.y; }
+      if (p.x < -p.w - 120 || p.x > window.innerWidth + 120) resetPlane(p, false);
+    }
+
+    p.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+  }
 }
 
 function startPlanes() {
   if (reducedMotion) return;
-  setTimeout(launchPlane, 5000); // даём герою спокойно появиться
+
+  for (let i = 0; i < PLANE_COUNT; i++) {
+    const el = document.createElement('div');
+    el.className = 'plane';
+    el.innerHTML = PLANE_SVG;
+    document.body.appendChild(el);
+    const p = { el, flagEl: el.querySelector('.plane-flag'), iconEl: el.querySelector('.plane-icon') };
+    resetPlane(p, true);
+    planes.push(p);
+  }
+
+  window.addEventListener('pointermove', (e) => { pointer.x = e.clientX; pointer.y = e.clientY; });
+  // тап/клик рядом с самолётиком — мёртвая петля
+  window.addEventListener('pointerdown', (e) => {
+    for (const p of planes) {
+      if (p.loop < 0 && Math.hypot(p.x + p.w / 2 - e.clientX, p.y - e.clientY) < 140) {
+        p.loop = 0; p.loopX = p.x; p.loopY = p.y;
+      }
+    }
+  });
+
+  let last = performance.now();
+  (function frame(now) {
+    const dt = Math.min(now - last, 50) / 1000;
+    last = now;
+    planeFrame(now, dt);
+    requestAnimationFrame(frame);
+  })(last);
 }
 
 /* ---------- появление секций при скролле ---------- */
