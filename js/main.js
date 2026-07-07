@@ -177,26 +177,37 @@ let planeWordIdx = 0;
 const pointer = { x: -1e4, y: -1e4 };
 
 function resetPlane(p, onScreen) {
-  p.dir = Math.random() < 0.5 ? 1 : -1;
+  const W = window.innerWidth, H = window.innerHeight;
+  const speed = 55 + Math.random() * 45; // px/с
+  // стартуем с любой из четырёх сторон, летим по диагоналям
+  const side = onScreen ? 'screen'
+    : ['left', 'left', 'right', 'right', 'top', 'bottom'][Math.floor(Math.random() * 6)];
+
+  p.vy = (Math.random() - 0.5) * 0.6 * speed;
+  if (side === 'left')        { p.vx = speed;  p.x = -400; p.baseY = Math.random() * 0.5 * H; }
+  else if (side === 'right')  { p.vx = -speed; p.x = W + 80; p.baseY = Math.random() * 0.5 * H; }
+  else if (side === 'top')    { p.vx = (Math.random() < 0.5 ? 1 : -1) * speed; p.vy = (0.4 + Math.random() * 0.3) * speed; p.x = W * (0.2 + Math.random() * 0.6); p.baseY = -60; }
+  else if (side === 'bottom') { p.vx = (Math.random() < 0.5 ? 1 : -1) * speed; p.vy = -(0.4 + Math.random() * 0.3) * speed; p.x = W * (0.2 + Math.random() * 0.6); p.baseY = 0.6 * H; }
+  else                        { p.vx = (Math.random() < 0.5 ? 1 : -1) * speed; p.x = Math.random() * W; p.baseY = Math.random() * 0.45 * H; }
+
+  p.dir = p.vx >= 0 ? 1 : -1;
   p.el.classList.toggle('fly-left', p.dir === -1);
   p.flagEl.textContent = PLANE_WORDS[planeWordIdx++ % PLANE_WORDS.length];
   p.w = p.el.offsetWidth;
-  p.speed = 55 + Math.random() * 45;                      // px/с
-  p.baseY = (0.05 + Math.random() * 0.3) * window.innerHeight;
-  p.ampl = 14 + Math.random() * 26;                       // амплитуда волны
-  p.freq = 0.004 + Math.random() * 0.004;                 // частота волны
-  p.phase = Math.random() * Math.PI * 2;
-  p.x = onScreen ? Math.random() * window.innerWidth
-                 : (p.dir === 1 ? -p.w - 80 : window.innerWidth + 80);
+  if (side === 'left') p.x = -p.w - 80; // ширина известна только после подстановки слова
+  // две наложенные синусоиды — волнистая, «живая» траектория
+  p.a1 = 24 + Math.random() * 30;  p.f1 = 0.005 + Math.random() * 0.004;  p.ph1 = Math.random() * Math.PI * 2;
+  p.a2 = 8 + Math.random() * 14;   p.f2 = 0.011 + Math.random() * 0.007;  p.ph2 = Math.random() * Math.PI * 2;
   p.y = p.baseY;
-  p.loop = -1;                                            // -1 = обычный полёт
+  p.dodge = 0;                     // сглаженное смещение от курсора
+  p.tilt = 0;
+  p.loop = -1;                     // -1 = обычный полёт
   p.nextLoopAt = performance.now() + 6000 + Math.random() * 12000;
 }
 
 function planeFrame(now, dt) {
+  const W = window.innerWidth, H = window.innerHeight;
   for (const p of planes) {
-    const cx = p.x + p.w / 2, cy = p.y;
-
     if (p.loop >= 0) {
       // мёртвая петля
       p.loop += dt / 1.7;
@@ -207,25 +218,31 @@ function planeFrame(now, dt) {
         `scaleX(${p.dir === -1 ? -1 : 1}) rotate(${-a * 180 / Math.PI * p.dir}deg)`;
       if (p.loop >= 1) { p.loop = -1; p.iconEl.style.transform = ''; p.nextLoopAt = now + 8000 + Math.random() * 12000; }
     } else {
-      p.x += p.dir * p.speed * dt;
-      let targetY = p.baseY + Math.sin(p.x * p.freq + p.phase) * p.ampl;
+      p.x += p.vx * dt;
+      p.baseY += p.vy * dt;
 
-      // реакция на курсор/палец: мягко уворачиваются
-      const dx = cx - pointer.x, dy = cy - pointer.y;
+      // мягкий отскок от границ «неба» (5–60% экрана)
+      if (p.baseY < 0.04 * H && p.vy < 0) p.vy = -p.vy;
+      if (p.baseY > 0.6 * H && p.vy > 0) p.vy = -p.vy;
+
+      // курсор рядом — плавное усилие в сторону от него, без рывков
+      const dx = p.x + p.w / 2 - pointer.x, dy = p.y - pointer.y;
       const dist = Math.hypot(dx, dy);
-      if (dist < 150) {
-        targetY += (dy >= 0 ? 1 : -1) * (150 - dist) * 0.9;
-        p.x += p.dir * (150 - dist) * 0.6 * dt * 8;
-      }
-      const prevY = p.y;
-      p.y += (targetY - p.y) * Math.min(1, dt * 3.5);
+      const want = dist < 160 ? (dy >= 0 ? 1 : -1) * (160 - dist) * 0.8 : 0;
+      p.dodge += (want - p.dodge) * Math.min(1, dt * 2.2);
 
-      // лёгкий крен по направлению движения
-      const tilt = Math.max(-12, Math.min(12, (p.y - prevY) / (p.speed * dt) * 22 * p.dir));
-      p.el.style.rotate = tilt + 'deg';
+      const wave = Math.sin(p.x * p.f1 + p.ph1) * p.a1 + Math.sin(p.x * p.f2 + p.ph2) * p.a2;
+      const prevY = p.y;
+      p.y += (p.baseY + wave + p.dodge - p.y) * Math.min(1, dt * 3);
+
+      // плавный крен по фактическому движению
+      const tiltTarget = Math.max(-16, Math.min(16,
+        Math.atan2(p.y - prevY, Math.abs(p.vx) * dt) * 180 / Math.PI * 0.5 * p.dir));
+      p.tilt += (tiltTarget - p.tilt) * Math.min(1, dt * 4);
+      p.el.style.rotate = p.tilt.toFixed(2) + 'deg';
 
       if (now > p.nextLoopAt) { p.loop = 0; p.loopX = p.x; p.loopY = p.y; }
-      if (p.x < -p.w - 120 || p.x > window.innerWidth + 120) resetPlane(p, false);
+      if (p.x < -p.w - 140 || p.x > W + 120 || p.y < -120 || p.y > 0.75 * H) resetPlane(p, false);
     }
 
     p.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
