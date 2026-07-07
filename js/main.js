@@ -167,14 +167,36 @@ const PLANE_WORDS = ['Love', 'Даша и Лёня', 'All we need is love', '19 
 const PLANE_COUNT = 3;
 
 const PLANE_SVG =
-  '<span class="plane-flag"></span><i class="plane-rope"></i>' +
-  '<svg class="plane-icon" viewBox="0 0 32 32" width="30" height="30" fill="none" ' +
+  '<svg viewBox="0 0 32 32" width="30" height="30" fill="none" ' +
   'stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">' +
   '<path d="M30 16 L3 7 L11 16 L3 25 Z"/><line x1="30" y1="16" x2="11" y2="16"/></svg>';
 
+const ROPE_GAP = 16;  // от центра самолётика до начала верёвки (по дуге следа)
+const ROPE_LEN = 34;  // длина верёвки
+
 const planes = [];
 let planeWordIdx = 0;
+let skyCanvas = null, skyCtx = null;
 const pointer = { x: -1e4, y: -1e4 };
+let scrollGust = 0, lastScrollY = null;
+
+/* точка на «следе» на расстоянии s (по дуге) позади самолёта;
+   след хранится от свежего к старому */
+function trailPoint(trail, s) {
+  let acc = 0;
+  for (let i = 0; i + 1 < trail.length; i++) {
+    const a = trail[i], b = trail[i + 1];
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    if (acc + d >= s && d > 1e-6) {
+      const t = (s - acc) / d;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t,
+               ang: Math.atan2(a.y - b.y, a.x - b.x) * 180 / Math.PI };
+    }
+    acc += d;
+  }
+  const z = trail[trail.length - 1];
+  return { x: z.x, y: z.y, ang: 0 };
+}
 
 function resetPlane(p, onScreen) {
   const W = window.innerWidth, H = window.innerHeight;
@@ -191,10 +213,11 @@ function resetPlane(p, onScreen) {
   else                        { p.vx = (Math.random() < 0.5 ? 1 : -1) * speed; p.x = Math.random() * W; p.baseY = Math.random() * 0.45 * H; }
 
   p.dir = p.vx >= 0 ? 1 : -1;
-  p.el.classList.toggle('fly-left', p.dir === -1);
   p.flagEl.textContent = PLANE_WORDS[planeWordIdx++ % PLANE_WORDS.length];
-  p.w = p.el.offsetWidth;
-  if (side === 'left') p.x = -p.w - 80; // ширина известна только после подстановки слова
+  p.fw = p.flagEl.offsetWidth;
+  p.fh = p.flagEl.offsetHeight;
+  const total = ROPE_GAP + ROPE_LEN + p.fw + 60;
+  if (side === 'left') p.x = -total;
   // две наложенные синусоиды — волнистая, «живая» траектория
   p.a1 = 24 + Math.random() * 30;  p.f1 = 0.005 + Math.random() * 0.004;  p.ph1 = Math.random() * Math.PI * 2;
   p.a2 = 8 + Math.random() * 14;   p.f2 = 0.011 + Math.random() * 0.007;  p.ph2 = Math.random() * Math.PI * 2;
@@ -202,14 +225,30 @@ function resetPlane(p, onScreen) {
   p.prevX = p.x;
   p.prevY = p.y;
   p.dodge = 0;                     // сглаженное смещение от курсора
+  p.windOff = 0; p.windV = 0;      // «порыв ветра» от скролла
   p.heading = Math.atan2(p.vy, p.vx) * 180 / Math.PI; // нос — по вектору скорости
-  p.banner = 0;                    // наклон всей связки (флажок летит за самолётом)
+  p.flagAngle = ((p.heading + 90) % 180 + 180) % 180 - 90;
   p.loop = -1;                     // -1 = обычный полёт
   p.nextLoopAt = performance.now() + 6000 + Math.random() * 12000;
+
+  // след предзаполняем назад по вектору скорости — флажок сразу летит ровно
+  const sp = Math.hypot(p.vx, p.vy) || 1;
+  const ux = p.vx / sp, uy = p.vy / sp;
+  p.trail = [];
+  for (let s = 0; s < total + 120; s += 5) {
+    p.trail.push({ x: p.x - ux * s, y: p.y - uy * s });
+  }
 }
 
 function planeFrame(now, dt) {
   const W = window.innerWidth, H = window.innerHeight;
+  const gust = scrollGust; scrollGust = 0;
+
+  skyCtx.clearRect(0, 0, skyCanvas.width, skyCanvas.height);
+  skyCtx.strokeStyle = 'rgba(176, 141, 87, 0.75)';
+  skyCtx.lineWidth = devicePixelRatio;
+  skyCtx.setLineDash([4 * devicePixelRatio, 4 * devicePixelRatio]);
+
   for (const p of planes) {
     if (p.loop >= 0) {
       // мёртвая петля
@@ -227,7 +266,7 @@ function planeFrame(now, dt) {
       if (p.baseY > 0.6 * H && p.vy > 0) p.vy = -p.vy;
 
       // курсор рядом — плавное усилие в сторону от него, без рывков
-      const dx = p.x + p.w / 2 - pointer.x, dy = p.y - pointer.y;
+      const dx = p.x - pointer.x, dy = p.y - pointer.y;
       const dist = Math.hypot(dx, dy);
       const want = dist < 160 ? (dy >= 0 ? 1 : -1) * (160 - dist) * 0.8 : 0;
       p.dodge += (want - p.dodge) * Math.min(1, dt * 2.2);
@@ -236,42 +275,86 @@ function planeFrame(now, dt) {
       p.y += (p.baseY + wave + p.dodge - p.y) * Math.min(1, dt * 3);
 
       if (now > p.nextLoopAt) { p.loop = 0; p.loopX = p.x; p.loopY = p.y; }
-      if (p.x < -p.w - 140 || p.x > W + 120 || p.y < -120 || p.y > 0.75 * H) resetPlane(p, false);
+      const margin = ROPE_GAP + ROPE_LEN + p.fw + 200;
+      if (p.x < -margin || p.x > W + margin || p.y < -160 || p.y > 0.8 * H) resetPlane(p, false);
     }
 
+    // «ветер» от скролла: импульс + возврат пружиной (у каждого свой характер)
+    p.windV += -gust * p.windK * 2;
+    p.windV = Math.max(-240, Math.min(240, p.windV));
+    p.windV += (-9 * p.windOff - 4.5 * p.windV) * dt;
+    p.windOff += p.windV * dt;
+    const ry = p.y + p.windOff;
+
     // нос самолёта всегда смотрит туда, куда он реально летит
-    const mx = p.x - p.prevX, my = p.y - p.prevY;
-    if (Math.hypot(mx, my) > 0.1) {
+    const mx = p.x - p.prevX, my = ry - p.prevY;
+    if (Math.hypot(mx, my) > 0.05) {
       const target = Math.atan2(my, mx) * 180 / Math.PI;
       const delta = ((target - p.heading + 540) % 360) - 180;
       p.heading += delta * Math.min(1, dt * (p.loop >= 0 ? 14 : 6));
-
-      // вся связка (верёвка + флажок) наклоняется вдоль линии полёта;
-      // текст остаётся читаемым (наклон в пределах ±90°), в петле — замирает
-      if (p.loop < 0) {
-        let line = ((p.heading % 360) + 360) % 360;
-        if (line > 90 && line < 270) line -= 180;
-        else if (line >= 270) line -= 360;
-        p.banner += (line - p.banner) * Math.min(1, dt * 5);
-      }
-      p.iconEl.style.transform = `rotate(${(p.heading - p.banner).toFixed(1)}deg)`;
     }
     p.prevX = p.x;
-    p.prevY = p.y;
+    p.prevY = ry;
 
-    p.el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0) rotate(${p.banner.toFixed(1)}deg)`;
+    // след: свежая точка в начало, хвост подрезаем по длине дуги
+    p.trail.unshift({ x: p.x, y: ry });
+    let arc = 0;
+    const maxArc = ROPE_GAP + ROPE_LEN + p.fw + 160;
+    for (let i = 0; i + 1 < p.trail.length; i++) {
+      arc += Math.hypot(p.trail[i + 1].x - p.trail[i].x, p.trail[i + 1].y - p.trail[i].y);
+      if (arc > maxArc) { p.trail.length = i + 2; break; }
+    }
+
+    // флажок буксируется по следу — с настоящей инерцией и запаздыванием
+    const fc = trailPoint(p.trail, ROPE_GAP + ROPE_LEN + p.fw / 2);
+    let fa = fc.ang;
+    if (fa > 90) fa -= 180; else if (fa < -90) fa += 180; // текст не переворачивается
+    const fd = ((fa - p.flagAngle + 540) % 360) - 180;
+    p.flagAngle += fd * Math.min(1, dt * 8);
+
+    p.el.style.transform =
+      `translate3d(${(p.x - 15).toFixed(1)}px, ${(ry - 15).toFixed(1)}px, 0) rotate(${p.heading.toFixed(1)}deg)`;
+    p.flagEl.style.transform =
+      `translate3d(${(fc.x - p.fw / 2).toFixed(1)}px, ${(fc.y - p.fh / 2).toFixed(1)}px, 0) rotate(${p.flagAngle.toFixed(1)}deg)`;
+
+    // верёвка — кривая вдоль следа, от хвоста самолётика до кромки флажка
+    skyCtx.beginPath();
+    const steps = 6;
+    for (let i = 0; i <= steps; i++) {
+      const pt = trailPoint(p.trail, ROPE_GAP + (ROPE_LEN / steps) * i);
+      if (i === 0) skyCtx.moveTo(pt.x * devicePixelRatio, pt.y * devicePixelRatio);
+      else skyCtx.lineTo(pt.x * devicePixelRatio, pt.y * devicePixelRatio);
+    }
+    skyCtx.stroke();
   }
 }
 
 function startPlanes() {
   if (reducedMotion) return;
 
+  skyCanvas = document.createElement('canvas');
+  skyCanvas.className = 'sky';
+  skyCanvas.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(skyCanvas);
+  skyCtx = skyCanvas.getContext('2d');
+  const sizeSky = () => {
+    skyCanvas.width = window.innerWidth * devicePixelRatio;
+    skyCanvas.height = window.innerHeight * devicePixelRatio;
+  };
+  sizeSky();
+  window.addEventListener('resize', sizeSky);
+
   for (let i = 0; i < PLANE_COUNT; i++) {
     const el = document.createElement('div');
-    el.className = 'plane';
+    el.className = 'plane-node';
+    el.setAttribute('aria-hidden', 'true');
     el.innerHTML = PLANE_SVG;
+    const flagEl = document.createElement('span');
+    flagEl.className = 'plane-flag';
+    flagEl.setAttribute('aria-hidden', 'true');
     document.body.appendChild(el);
-    const p = { el, flagEl: el.querySelector('.plane-flag'), iconEl: el.querySelector('.plane-icon') };
+    document.body.appendChild(flagEl);
+    const p = { el, flagEl, windK: 0.10 + Math.random() * 0.12 };
     resetPlane(p, true);
     planes.push(p);
   }
@@ -280,11 +363,18 @@ function startPlanes() {
   // тап/клик рядом с самолётиком — мёртвая петля
   window.addEventListener('pointerdown', (e) => {
     for (const p of planes) {
-      if (p.loop < 0 && Math.hypot(p.x + p.w / 2 - e.clientX, p.y - e.clientY) < 140) {
+      if (p.loop < 0 && Math.hypot(p.x - e.clientX, p.y - e.clientY) < 140) {
         p.loop = 0; p.loopX = p.x; p.loopY = p.y;
       }
     }
   });
+
+  // скролл «сдувает» самолётики — с инерцией и пружинным возвратом
+  lastScrollY = window.scrollY;
+  window.addEventListener('scroll', () => {
+    scrollGust += window.scrollY - lastScrollY;
+    lastScrollY = window.scrollY;
+  }, { passive: true });
 
   let last = performance.now();
   (function frame(now) {
