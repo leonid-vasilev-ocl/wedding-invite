@@ -288,17 +288,20 @@ function planeFrame(now, dt) {
       if (arc > maxArc) { p.trail.length = i + 2; break; }
     }
 
-    // флажок буксируется по следу — с настоящей инерцией и запаздыванием
-    const fc = trailPoint(p.trail, ROPE_GAP + ROPE_LEN + p.fw / 2);
-    let fa = fc.ang;
+    // флажок буксируется по следу: передняя кромка — точно у конца верёвки,
+    // угол — хорда по следу на всю ширину флажка (без временно́го сглаживания)
+    const fFront = trailPoint(p.trail, ROPE_GAP + ROPE_LEN);
+    const fBack = trailPoint(p.trail, ROPE_GAP + ROPE_LEN + p.fw);
+    const fcx = (fFront.x + fBack.x) / 2, fcy = (fFront.y + fBack.y) / 2;
+    let fa = Math.atan2(fFront.y - fBack.y, fFront.x - fBack.x) * 180 / Math.PI;
     if (fa > 90) fa -= 180; else if (fa < -90) fa += 180; // текст не переворачивается
     const fd = ((fa - p.flagAngle + 540) % 360) - 180;
-    p.flagAngle += fd * Math.min(1, dt * 8);
+    p.flagAngle += fd * Math.min(1, dt * 20); // лишь гасим покадровый шум
 
     p.el.style.transform =
       `translate3d(${(p.x - 15).toFixed(1)}px, ${(ry - 15).toFixed(1)}px, 0) rotate(${p.heading.toFixed(1)}deg)`;
     p.flagEl.style.transform =
-      `translate3d(${(fc.x - p.fw / 2).toFixed(1)}px, ${(fc.y - p.fh / 2).toFixed(1)}px, 0) rotate(${p.flagAngle.toFixed(1)}deg)`;
+      `translate3d(${(fcx - p.fw / 2).toFixed(1)}px, ${(fcy - p.fh / 2).toFixed(1)}px, 0) rotate(${p.flagAngle.toFixed(1)}deg)`;
 
     // верёвка — кривая вдоль следа, от хвоста самолётика до кромки флажка
     skyCtx.beginPath();
