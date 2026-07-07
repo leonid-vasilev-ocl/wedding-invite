@@ -164,7 +164,7 @@ envelope.addEventListener('keydown', (e) => {
 
 // EDIT ME: слова на флажках и число самолётиков в небе
 const PLANE_WORDS = ['Love', 'Лёня ♥ Даша', 'All we need is love', '❤️', '19 · 08 · 2026', 'Ждём вас!', 'ки!'];
-const PLANE_COUNT = 3;
+const PLANE_COUNT = 2;
 
 const PLANE_SVG =
   '<svg viewBox="0 0 32 32" width="30" height="30" fill="none" ' +
