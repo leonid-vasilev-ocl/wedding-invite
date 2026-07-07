@@ -142,6 +142,7 @@ function openEnvelope() {
     musicToggle.hidden = false;
     scene.classList.add('is-done');
     observeReveals();
+    startPlanes();
   }, t.show);
 
   setTimeout(() => {
@@ -157,6 +158,36 @@ envelope.addEventListener('keydown', (e) => {
     openEnvelope();
   }
 });
+
+/* ---------- самолётики с транспарантами ---------- */
+
+// EDIT ME: слова на флажках
+const PLANE_WORDS = ['Love', 'Даша и Лёня', '19 · 08 · 2026', 'Ждём вас!', 'ки!'];
+let planeIdx = 0;
+
+function launchPlane() {
+  const plane = document.getElementById('plane');
+  document.getElementById('planeFlag').textContent =
+    PLANE_WORDS[planeIdx % PLANE_WORDS.length];
+  const toRight = planeIdx % 2 === 0;
+  planeIdx++;
+  plane.classList.toggle('fly-left', !toRight);
+  plane.style.top = (2 + Math.random() * 5) + 'vh'; // верхняя «небесная» полоса
+
+  const w = plane.offsetWidth + 60;
+  const from = toRight ? -w : window.innerWidth + w;
+  const to = toRight ? window.innerWidth + w : -w;
+  const flight = plane.animate(
+    [{ transform: `translateX(${from}px)` }, { transform: `translateX(${to}px)` }],
+    { duration: 14000 + Math.random() * 5000, easing: 'linear' }
+  );
+  flight.onfinish = () => setTimeout(launchPlane, 5000 + Math.random() * 7000);
+}
+
+function startPlanes() {
+  if (reducedMotion) return;
+  setTimeout(launchPlane, 5000); // даём герою спокойно появиться
+}
 
 /* ---------- появление секций при скролле ---------- */
 
