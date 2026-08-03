@@ -16,7 +16,7 @@ const GUESTS = {
   // 'roditeli-dashi': { address: 'Для Ирины и Сергея', greeting: 'Дорогие Ирина и Сергей!' },
 };
 
-const WEDDING_DATE = new Date('2026-08-19T09:00:00+04:00'); // сбор в отеле, Тбилиси (UTC+4)
+const WEDDING_DATE = new Date('2026-08-19T15:00:00+04:00'); // сбор в отеле, Тбилиси (UTC+4)
 
 const scene = document.getElementById('scene');
 const envelope = document.getElementById('envelope');
