@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Prata&family=Cormorant:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@300;400;500&family=Marck+Script&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=6">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%235C2233'/><text x='50' y='63' font-size='38' text-anchor='middle' fill='%23CBB58C' font-family='Georgia'>ЛД</text></svg>">
 </head>
 <body class="locked">
@@ -74,16 +74,23 @@
     </header>
 
     <section class="section">
-      <p class="eyebrow reveal">Дорогие наши</p>
+      <p class="eyebrow reveal" data-for="guests">Дорогие наши</p>
+      <p class="eyebrow reveal" data-for="bride">Только для тебя</p>
       <!-- Персональное обращение подставляется скриптом по ссылке вида ?g=имя (см. js/main.js) -->
       <h2 class="reveal" id="greeting">Родные!</h2>
-      <p class="lead reveal">
+      <p class="lead reveal" data-for="guests">
         В нашей жизни наступает день, который мы хотим разделить
         с самыми близкими людьми. Мы будем счастливы видеть вас
         рядом в день нашей свадьбы&nbsp;— тёплым августовским вечером
         в самом сердце Тбилиси.
       </p>
-      <p class="lead-accent reveal">Приезжайте&nbsp;— без вас этот день не будет полным.</p>
+      <p class="lead reveal" data-for="bride">
+        11 августа я встречу тебя в Тбилиси&nbsp;— и до самой свадьбы
+        мы больше не расстанемся. А 19-го, тёплым августовским вечером,
+        ты станешь моей женой.
+      </p>
+      <p class="lead-accent reveal" data-for="guests">Приезжайте&nbsp;— без вас этот день не будет полным.</p>
+      <p class="lead-accent reveal" data-for="bride">Всё уже готово. Осталось дождаться только тебя.</p>
     </section>
 
     <section class="section section-count">
@@ -105,7 +112,8 @@
       <ol class="timeline">
         <li class="reveal"><time>15:00</time><div><h3>Сбор в отеле Reed</h3><p>Встречаемся в Reed Hotel Tbilisi, знакомимся и настраиваемся на большой день</p></div></li>
         <li class="reveal"><time>16:00</time><div><h3>Церемония в ЗАГСе</h3><p>Дворец бракосочетаний на улице Узнадзе&nbsp;— самые главные слова этого дня</p></div></li>
-        <li class="reveal"><time>17:00</time><div><h3>Экскурсия для гостей</h3><p>Час на электроавтобусе по главным достопримечательностям&nbsp;— старт с площади Европы в парке «Рике». Мы в это время на фотосессии</p></div></li>
+        <li class="reveal" data-for="guests"><time>17:00</time><div><h3>Экскурсия для гостей</h3><p>Час на электроавтобусе по главным достопримечательностям&nbsp;— старт с площади Европы в парке «Рике». Мы в это время на фотосессии</p></div></li>
+        <li class="reveal" data-for="bride"><time>17:00</time><div><h3>Наша фотосессия</h3><p>Час только для нас двоих, пока гости катаются по городу на электроавтобусе</p></div></li>
         <li class="reveal"><span class="t">затем</span><div><h3>Свободное время</h3><p>До ужина можно отдохнуть и не спеша погулять по Старому Тбилиси</p></div></li>
         <li class="reveal"><time>20:00</time><div><h3>Праздничный ужин</h3><p>Ресторан See360&nbsp;— грузинское застолье с панорамой Старого Тбилиси, тосты и тепло до поздней ночи</p></div></li>
       </ol>
@@ -128,12 +136,18 @@
     </section>
 
     <section class="section">
-      <p class="eyebrow reveal">Дресс-код</p>
-      <h2 class="reveal">Официальный</h2>
-      <p class="lead reveal">
+      <p class="eyebrow reveal" data-for="guests">Дресс-код</p>
+      <h2 class="reveal" data-for="guests">Официальный</h2>
+      <p class="lead reveal" data-for="guests">
         Мы будем рады, если вы поддержите торжественность вечера:
         мужчины&nbsp;— в костюмах, дамы&nbsp;— в вечерних платьях.
         Будем признательны за глубокие, благородные оттенки.
+      </p>
+      <p class="eyebrow reveal" data-for="bride">Твоё платье</p>
+      <h2 class="reveal" data-for="bride">Самая красивая</h2>
+      <p class="lead reveal" data-for="bride">
+        Не важно, что ты выберешь&nbsp;— я уже знаю, что у меня
+        собьётся дыхание. Ниже палитра вечера, если захочешь попасть в тон.
       </p>
       <ul class="swatches reveal" aria-label="Палитра дресс-кода">
         <li style="--sw:#252430" title="Глубокий графит"></li>
@@ -145,13 +159,20 @@
     </section>
 
     <section class="section">
-      <p class="eyebrow reveal">Чек-лист гостя</p>
+      <p class="eyebrow reveal" data-for="guests">Чек-лист гостя</p>
+      <p class="eyebrow reveal" data-for="bride">Твой чек-лист</p>
       <h2 class="reveal">Что взять с собой</h2>
-      <ul class="checklist">
+      <ul class="checklist" data-for="guests">
         <li class="reveal"><h3>Паспорт</h3><p>в Грузию без него пускают только мысленно</p></li>
         <li class="reveal"><h3>Чувство юмора</h3><p>за грузинским столом без него никак</p></li>
         <li class="reveal"><h3>Слово «ки»</h3><p>по-грузински значит «да» — главное слово этого дня</p></li>
         <li class="reveal"><h3>Спокойствие</h3><p>обо всём остальном мы уже позаботились</p></li>
+      </ul>
+      <ul class="checklist" data-for="bride">
+        <li class="reveal"><h3>Платье</h3><p>то самое, в котором ты скажешь «да»</p></li>
+        <li class="reveal"><h3>Кольца</h3><p>два маленьких круга, которые всё меняют</p></li>
+        <li class="reveal"><h3>Паспорт</h3><p>без него в ЗАГСе не распишут, проверено</p></li>
+        <li class="reveal"><h3>Ты</h3><p>сладкая булочка — самое главное в этом списке</p></li>
       </ul>
     </section>
 
@@ -172,6 +193,6 @@
 
   <audio id="bgm" src="assets/music.mp3?v=4" loop preload="none"></audio>
 
-  <script src="js/main.js?v=12"></script>
+  <script src="js/main.js?v=13"></script>
 </body>
 </html>

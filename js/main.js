@@ -1,8 +1,13 @@
 'use strict';
 
+const WEDDING_DATE = new Date('2026-08-19T15:00:00+04:00'); // сбор в отеле, Тбилиси (UTC+4)
+const MEETUP_DATE  = new Date('2026-08-11T12:05:00+04:00'); // встреча с Дашей в Тбилиси (UTC+4)
+
 /* ============================================================
    Персональное обращение: ссылка вида index.html?g=roditeli-dashi
    подставит текст из GUESTS вместо общего приветствия.
+   mode: 'bride' переключает страницу на вариант для Даши
+   (блоки с data-for в index.html), countdown — свой отсчёт.
    EDIT ME: раскомментируйте и заполните под каждого гостя.
    ============================================================ */
 const GUESTS = {
@@ -12,11 +17,22 @@ const GUESTS = {
   'mama-sasha': { address: 'Для Людмилы Ивановны и Саши', greeting: 'Дорогие Людмила Ивановна и Саша!' },
   'lyudmila':       { address: 'Для Людмилы Ивановны',        greeting: 'Дорогая Людмила Ивановна!' },
   'lyudmila-sasha': { address: 'Для Людмилы Ивановны и Саши', greeting: 'Дорогие Людмила Ивановна и Саша!' },
+  'bulochka': {
+    address: 'Для сладкой булочки',
+    greeting: 'Сладкая булочка!',
+    mode: 'bride',
+    countdown: {
+      date: MEETUP_DATE,
+      before: 'До встречи с тобой осталось',
+      done: { eyebrow: 'Ты здесь', message: 'Мы наконец в одном городе!' },
+    },
+  },
   // EDIT ME: шаблон для новых гостей
   // 'roditeli-dashi': { address: 'Для Ирины и Сергея', greeting: 'Дорогие Ирина и Сергей!' },
 };
 
-const WEDDING_DATE = new Date('2026-08-19T15:00:00+04:00'); // сбор в отеле, Тбилиси (UTC+4)
+let countdownTarget = WEDDING_DATE;
+let countdownDone = { eyebrow: 'Этот день настал', message: 'Сегодня мы становимся семьёй!' };
 
 const scene = document.getElementById('scene');
 const envelope = document.getElementById('envelope');
@@ -34,6 +50,13 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
   if (!guest) return; // без параметра остаётся общий вариант из HTML
   if (guest.address) document.getElementById('envAddress').textContent = guest.address;
   if (guest.greeting) document.getElementById('greeting').textContent = guest.greeting;
+  if (guest.mode) document.body.dataset.mode = guest.mode;
+  if (guest.countdown) {
+    countdownTarget = guest.countdown.date;
+    countdownDone = guest.countdown.done;
+    const eyebrow = document.querySelector('.section-count .eyebrow');
+    if (eyebrow) eyebrow.textContent = guest.countdown.before;
+  }
 })();
 
 /* ---------- звук: шорох бумаги (Web Audio, без файла) ---------- */
@@ -399,11 +422,11 @@ const cd = {
 };
 
 function tickCountdown() {
-  let diff = WEDDING_DATE - Date.now();
+  let diff = countdownTarget - Date.now();
   if (diff <= 0) {
-    document.querySelector('.section-count .eyebrow').textContent = 'Этот день настал';
+    document.querySelector('.section-count .eyebrow').textContent = countdownDone.eyebrow;
     document.getElementById('countdown').innerHTML =
-      '<p class="lead-accent">Сегодня мы становимся семьёй!</p>';
+      '<p class="lead-accent">' + countdownDone.message + '</p>';
     clearInterval(cdTimer);
     return;
   }

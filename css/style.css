@@ -343,6 +343,12 @@ img { max-width: 100%; display: block; }
 .invite { visibility: hidden; position: relative; z-index: 1; }
 .invite.is-shown { visibility: visible; }
 
+/* --- персональные варианты (?g=): показывается только один набор блоков --- */
+/* Скрываем лишнее, а не восстанавливаем display, — иначе сломается grid у .timeline li */
+
+body:not([data-mode="bride"]) [data-for="bride"] { display: none; }
+body[data-mode="bride"] [data-for="guests"] { display: none; }
+
 /* --- появление при скролле --- */
 
 .reveal {
