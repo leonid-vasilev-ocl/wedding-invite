@@ -13,7 +13,7 @@ const MEETUP_DATE  = new Date('2026-08-11T12:05:00+04:00'); // встреча с
 const GUESTS = {
   'mama-papa': { address: 'Для мамы и папы', greeting: 'Дорогие мама и папа!' },
   'mama':      { address: 'Для мамы',        greeting: 'Дорогая мама!' },
-  'brat':      { address: 'Для Саши',        greeting: 'Дорогой Саша!' },
+  'brat':      { address: 'Для Саши',        greeting: 'Дорогой Саша!', ty: true },
   'mama-sasha': { address: 'Для Людмилы Ивановны и Саши', greeting: 'Дорогие Людмила Ивановна и Саша!' },
   'lyudmila':       { address: 'Для Людмилы Ивановны',        greeting: 'Дорогая Людмила Ивановна!' },
   'lyudmila-sasha': { address: 'Для Людмилы Ивановны и Саши', greeting: 'Дорогие Людмила Ивановна и Саша!' },
@@ -21,6 +21,7 @@ const GUESTS = {
     address: 'Для сладкой булочки',
     greeting: 'Сладкая булочка!',
     mode: 'bride',
+    ty: true,
     countdown: {
       date: MEETUP_DATE,
       before: 'До встречи с тобой осталось',
@@ -31,8 +32,13 @@ const GUESTS = {
   // 'roditeli-dashi': { address: 'Для Ирины и Сергея', greeting: 'Дорогие Ирина и Сергей!' },
 };
 
+// Тот же гость под понятной ссылкой ?g=sasha
+GUESTS['sasha'] = GUESTS['brat'];
+
 let countdownTarget = WEDDING_DATE;
 let countdownDone = { eyebrow: 'Этот день настал', message: 'Сегодня мы становимся семьёй!' };
+// ty: true — обращение на «ты» (см. data-ty в index.html). По умолчанию везде «вы».
+let informal = false;
 
 const scene = document.getElementById('scene');
 const envelope = document.getElementById('envelope');
@@ -51,6 +57,10 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
   if (guest.address) document.getElementById('envAddress').textContent = guest.address;
   if (guest.greeting) document.getElementById('greeting').textContent = guest.greeting;
   if (guest.mode) document.body.dataset.mode = guest.mode;
+  if (guest.ty) {
+    informal = true;
+    document.querySelectorAll('[data-ty]').forEach((el) => { el.textContent = el.dataset.ty; });
+  }
   if (guest.countdown) {
     countdownTarget = guest.countdown.date;
     countdownDone = guest.countdown.done;
@@ -186,7 +196,8 @@ envelope.addEventListener('keydown', (e) => {
 /* ---------- самолётики с транспарантами ---------- */
 
 // EDIT ME: слова на флажках и число самолётиков в небе
-const PLANE_WORDS = ['Love', 'Лёня ♥ Даша', 'All we need is love', '❤️', '19 · 08 · 2026', 'Ждём вас!', 'ки!'];
+const PLANE_WORDS = ['Love', 'Лёня ♥ Даша', 'All we need is love', '❤️', '19 · 08 · 2026',
+  informal ? 'Ждём тебя!' : 'Ждём вас!', 'ки!'];
 const PLANE_COUNT = 2;
 
 const PLANE_SVG =
